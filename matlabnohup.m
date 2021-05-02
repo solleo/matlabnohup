@@ -1,5 +1,5 @@
 function fn_log = matlabnohup(script_to_run, path_log)
-% A script to run MATLAB script via nohup ("no hangups")
+% A script to run a MATLAB script via nohup ("no hangups")
 %
 % [SYNTAX]
 % [fn_log] = matlabnohup(script_to_run, [path_script], [path_log])
@@ -12,7 +12,7 @@ function fn_log = matlabnohup(script_to_run, path_log)
 % in MATLAB's PATH:
 % >> matlabnohup('/somewhere/else/myScript.m')
 %
-% By default, job logs will be saved in "${YOURHOME}/matlabnohup/" (e.g.,
+% By default, job logs will be saved in "${HOME}/matlabnohup/" (e.g.,
 % if you use Mac OS and your account is "foo", it will be 
 % "/Users/foo/matlabnohup"). If you want save the logs in "/whereever/":
 % >> matlabnohup('myScript', '/whereever/')
@@ -20,7 +20,7 @@ function fn_log = matlabnohup(script_to_run, path_log)
 % (cc) 2021, sgKIM. https://github.com/solleo/matlabnohup
 
 if ispc
-  error('no nohup in Windows. Sorry?')
+  error('no nohup in Windows?')
 end
 
 %% Set path_log
@@ -55,10 +55,12 @@ fclose(fid);
 %% now run:
 fn_log = fullfile(path_job,'run.log');
 fid = fopen(fn_log,'w');
-fprintf(fid, '[%s] JOB started: %s\n',mfilename, datestr(now,31));
+[~,pid] = system(['nohup bash ',fn_sh,' >>',fn_log,' 2>>',fn_log,'& echo $!']);
+pid(end) = []; % remove linebreak
+fprintf(fid,'[%s:%s] JOB created: PID=%s\n',mfilename, ...
+  datestr(now,31), pid);
 fclose(fid);
-system(['nohup bash ',fn_sh,' >>',fn_log,' 2>>',fn_log,'&']);
-fprintf('[%s] JOB created: %s\n',mfilename, fn_log);
+fprintf('[%s:%s] JOB created: %s\n', mfilename, datestr(now,31), fn_log);
 end
 
 
@@ -72,8 +74,6 @@ if ~isempty(files)
 else
   current_ids = 0;
 end
-current_ids(isnan(current_ids)) = [];
-% just one bigger:
-job_id = sprintf('%06i', max(current_ids) + 1);
-% fprintf('[%s] JOBID=%s\n',mfilename,jobid);
+current_ids(isnan(current_ids)) = []; % ignore not-a-number
+job_id = sprintf('%06i', max(current_ids) + 1); % just one bigger
 end
