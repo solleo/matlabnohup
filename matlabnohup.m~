@@ -1,0 +1,102 @@
+function matlabnohup(script_to_run, path_script, path_log)
+% A script to run MATLAB script via nohup ("no hangups")
+%
+% [SYNTAX]
+% matlabnohup(script_to_run, [path_script], [path_log])
+%
+% [USAGE]
+% When you have a script "myScript.m" in a directory in MATLAB's path:
+% >> matlabnohup('myScript')
+%
+% When you have a script "myScript.m" in "/somewhere/else/" that is not 
+% in MATLAB's PATH:
+% >> matlabnohup('myScript', '/somewhere/else/')
+%
+% By default, job logs will be saved in "${YOURHOME}/matlabnohup/" (e.g.,
+% if you use Mac OS and your account is "foo", it will be 
+% "/Users/foo/matlabnohup"). If you want save the logs in "/whereever/":
+% >> matlabnohup('myScript', [], '/whereever/')
+%
+% (cc) 2021, sgKIM. https://github.com/solleo/matlabnohup
+
+if ispc
+  error('no nohup in Windows. Sorry?')
+end
+
+%% Set path_log
+if ~exist('path_log','var')
+%   if ispc
+%     % from [https://www.mathworks.com/matlabcentral/fileexchange/
+%     % 15885-get-user-home-directory]
+%     userhome = winqueryreg('HKEY_CURRENT_USER',...
+%       ['Software\Microsoft\Windows\CurrentVersion\' ...
+%       'Explorer\Shell Folders'],'Personal');
+%     % in Windows "start /min" could be used?
+%   else
+    userhome = getenv('HOME');
+%   end
+  path_log = fullfile(userhome,'matlabnohup');
+end
+if ~isfolder(path_log)
+  try
+    mkdir(path_log);
+  catch
+    error(['[%s] cannot create a log directory "%s". ',...
+      'See if you have a permission to this directory.'], ...
+      mfilename, path_log)
+  end
+end
+
+%% Set jobid
+jobid = finduniquejobnumber(path_log);
+path_job = fullfile(path_log, jobid);
+try
+  mkdir(path_job)
+catch
+  error(['[%s] cannot create a log directory "%s". ',...
+      'See if you have a permission to the parent directory.'], ...
+      mfilename, path_log)
+end
+
+%% Set runme.m
+fn_m = fullfile(path_job,'runme.m');
+fid = fopen(fn_m,'w');
+if exist('path_script','var') && ~isempty(path_script)
+  fprintf(fid,'addpath %s\n',path_script);
+end
+[~,script_to_run,~] = fileparts(script_to_run);
+fprintf(fid,'%s\nexit\n',script_to_run);
+fclose(fid);
+
+%% Set runme.sh
+fn_sh = fullfile(path_job,'runme.sh');
+fid = fopen(fn_sh,'w');
+fprintf(fid,'#!/bin/bash\ncd %s\n',path_job);
+fprintf(fid,'matlab -nodesktop -nodisplay -nosplash -r runme\n');
+fclose(fid);
+
+%% now run:
+fn_log = fullfile(path_job,'run.log');
+fid = fopen(fn_log,'w');
+fprintf(fid, '[%s] JOB started: %s\n',mfilename, datestr(now,31));
+fclose(fid);
+system(['nohup bash ',fn_sh,' >>',fn_log,' 2>>',fn_log,'&']);
+fprintf('[%s] JOB created: %s\n',mfilename, fn_log);
+end
+
+
+function jobid = finduniquejobnumber(path_log)
+% get current jobIDs in the folder:
+files = dir(fullfile(path_log,'*'));
+files = files([files.isdir]);
+files(ismember({files.name},{'.','..'})) = [];
+if ~isempty(files)
+  currentids = cell2mat(cellfun(@str2double, {files.name}, 'uni',0));
+else
+  currentids = 0;
+end
+currentids(isnan(currentids)) = [];
+% just one bigger:
+jobid = sprintf('%06i', max(currentids) + 1);
+% fprintf('[%s] JOBID=%s\n',mfilename,jobid);
+end
