@@ -28,7 +28,7 @@ When you have a script "myScript.m" in "/somewhere/else/" that is not in MATLAB'
 >> matlabnohup('/somewhere/else/myScript.m')
 ```
 
-By default, job logs will be saved in "${HOME}/matlabnohup/" (e.g., if your account is "user123", it will be "/home/user123/" on Linux servers). If you want save the logs in "/whereever/":
+By default, job logs will be saved in "${HOME}/matlabnohup/" (e.g., if your account is "user123", it will be "/home/user123/matlabnohup/" on Linux servers). If you want save the logs in "/whereever/":
 ```
 >> matlabnohup('myScript', '/whereever/')
 ```
